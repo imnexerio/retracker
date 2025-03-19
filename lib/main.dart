@@ -7,14 +7,12 @@ import 'package:retracker/LoginSignupPage/LoginPage.dart';
 import 'package:retracker/theme_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'dart:convert';
-import 'dart:typed_data';
 import 'AI/ChatPage.dart';
 import 'HomePage/HomePage.dart';
 import 'SchedulePage/TodayPage.dart';
 import 'SettingsPage/SettingsPage.dart';
 import 'ThemeNotifier.dart';
+import 'Utils/ProfileImageHelper.dart';
 import 'Utils/SplashScreen.dart';
 import 'firebase_options.dart';
 
@@ -33,6 +31,9 @@ void main() async {
     ),
   );
 }
+
+// // Remove the old helper functions for profile pictures
+// // The getProfilePicture and decodeProfileImage functions are now in ProfileImageHelper class
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
@@ -61,56 +62,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Helper function to get profile picture
-Future<String?> getProfilePicture(String uid) async {
-  try {
-    DatabaseReference databaseRef = FirebaseDatabase.instance.ref('users/$uid/profile_data');
-    DataSnapshot snapshot = await databaseRef.child('profile_picture').get();
-    if (snapshot.exists) {
-      return snapshot.value as String?;
-    }
-  } catch (e) {
-    // Handle the error appropriately in the calling function
-    throw Exception('Error retrieving profile picture: $e');
-  }
-  return null;
-}
-
-// Helper function to decode profile image
-Future<Widget> decodeProfileImage(BuildContext context, String uid) async {
-  const String defaultImagePath = 'assets/icon/icon.png'; // Path to your default image
-  final double profileSize = 35.0; // Size of the profile picture
-
-  try {
-    String? base64String = await getProfilePicture(uid);
-    if (base64String != null && base64String.isNotEmpty) {
-      Uint8List imageBytes = base64Decode(base64String);
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(profileSize / 2),
-        child: Image.memory(
-          imageBytes,
-          width: profileSize,
-          height: profileSize,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-  } catch (e) {
-    // Silently fallback to default image
-    print('Error decoding profile picture: $e');
-  }
-
-  return ClipRRect(
-    borderRadius: BorderRadius.circular(profileSize / 2),
-    child: Image.asset(
-      defaultImagePath,
-      width: profileSize,
-      height: profileSize,
-      fit: BoxFit.cover,
-    ),
-  );
-}
-
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
 
@@ -121,8 +72,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
   String _currentUserUid = '';
-  Widget _profilePicWidget = Container(); // Placeholder for profile pic
-  bool _isProfileLoading = true;
+  // No need for profile pic widget or loading state anymore
 
   @override
   void initState() {
@@ -136,30 +86,11 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         _currentUserUid = user.uid;
       });
-      _loadProfilePicture();
+      // No need to call _loadProfilePicture separately
     }
   }
 
-  void _loadProfilePicture() async {
-    if (_currentUserUid.isNotEmpty) {
-      try {
-        Widget profileWidget = await decodeProfileImage(context, _currentUserUid);
-        if (mounted) {
-          setState(() {
-            _profilePicWidget = profileWidget;
-            _isProfileLoading = false;
-          });
-        }
-      } catch (e) {
-        print('Error loading profile picture: $e');
-        if (mounted) {
-          setState(() {
-            _isProfileLoading = false;
-          });
-        }
-      }
-    }
-  }
+  // Remove the old _loadProfilePicture method
 
   void _onItemTapped(int index) {
     setState(() {
@@ -172,8 +103,13 @@ class _MyHomePageState extends State<MyHomePage> {
       context,
       MaterialPageRoute(builder: (context) => SettingsPage()),
     ).then((_) {
-      // Reload profile picture when returning from settings
-      _loadProfilePicture();
+      // Clear the cache when coming back from settings in case of profile updates
+      if (_currentUserUid.isNotEmpty) {
+        ProfileImageHelper.clearUserCache(_currentUserUid);
+      }
+      setState(() {
+        // Trigger a rebuild to get the updated image
+      });
     });
   }
 
@@ -214,6 +150,8 @@ class _MyHomePageState extends State<MyHomePage> {
     'Chat',
   ];
 
+  // Rest of the code remains the same...
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -221,23 +159,23 @@ class _MyHomePageState extends State<MyHomePage> {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          automaticallyImplyLeading: false, // This removes the back button
+          automaticallyImplyLeading: false,
           backgroundColor: Colors.transparent,
           elevation: 0,
           title: Text(
             _pageTitles[_selectedIndex],
             style: TextStyle(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
-              fontSize: 25
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 25
             ),
           ),
           actions: [
             InkWell(
               onTap: _openSettings,
-              borderRadius: BorderRadius.circular(20), // Circular radius for the ripple effect
+              borderRadius: BorderRadius.circular(20),
               child: Padding(
-                padding: EdgeInsets.all(8.0), // Add some padding to increase tap target
+                padding: EdgeInsets.all(8.0),
                 child: Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
@@ -246,19 +184,21 @@ class _MyHomePageState extends State<MyHomePage> {
                       width: 2,
                     ),
                   ),
-                  child: _isProfileLoading
-                      ? Container(
-                    width: 35,
-                    height: 35,
-                    padding: EdgeInsets.all(8),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        theme.colorScheme.primary,
-                      ),
-                    ),
+                  child: _currentUserUid.isNotEmpty
+                      ? ProfileImageHelper.getProfileImageWithLoading(
+                    uid: _currentUserUid,
+                    context: context,
+                    size: 35.0,
                   )
-                      : _profilePicWidget,
+                      : ClipRRect(
+                    borderRadius: BorderRadius.circular(17.5),
+                    child: Image.asset(
+                      'assets/icon/icon.png',
+                      width: 35,
+                      height: 35,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
             )
