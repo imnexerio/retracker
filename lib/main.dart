@@ -32,9 +32,6 @@ void main() async {
   );
 }
 
-// // Remove the old helper functions for profile pictures
-// // The getProfilePicture and decodeProfileImage functions are now in ProfileImageHelper class
-
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
   final SharedPreferences prefs;
@@ -186,7 +183,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   child: _currentUserUid.isNotEmpty
                       ? ProfileImageHelper.getProfileImageWithLoading(
-                    uid: _currentUserUid,
                     context: context,
                     size: 35.0,
                   )

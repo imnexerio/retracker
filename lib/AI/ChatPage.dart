@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:retracker/AI/gemini_service.dart';
 import 'package:retracker/AI/schedule_data_provider.dart';
 import 'package:uuid/uuid.dart';
+import '../Utils/ProfileImageHelper.dart';
 import 'ApiKeyManager.dart';
 import 'ChatHistoryPage.dart';
 import 'ChatMessage.dart';
@@ -731,10 +732,9 @@ class ChatBubble extends StatelessWidget {
                 color: colorScheme.primaryContainer,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.person,
-                size: 16,
-                color: colorScheme.onPrimaryContainer,
+              child: ProfileImageHelper.getProfileImageWithLoading(
+                context: context,
+                size: 40.0,  // Optional - defaults to 35.0
               ),
             ),
         ],
